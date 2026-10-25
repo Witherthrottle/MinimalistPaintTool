@@ -31,6 +31,7 @@
       this.tools = MP.createTools(this);
       this.tool = this.tools[this.toolId];
       this.logger = new MP.Logger();
+      this.uploader = new MP.Uploader(this.logger);
       this.engine = new MP.PredictionEngine();
       this.suggest = new MP.Suggestions(this);
       this.ui = new MP.UI(this);
@@ -47,6 +48,7 @@
       this.logView = U.debounce(() => this.logEvent('view_change', { zoom: U.round(this.view.scale, 3), ox: Math.round(this.view.ox), oy: Math.round(this.view.oy) }), 400);
       this._optLog = {};
       this._colorLog = U.debounce((which, color, source) => this.logEvent('color_change', { which, color, source }), 350);
+      this.suggest.refresh('init', { force: true });
       if (!/[?&]nosetup\b/.test(location.search)) this.study.showSetup(true);
     },
 
@@ -72,6 +74,24 @@
       if (this.toolId === 'transform') this.ui.refreshOptions();
     },
     resetDocument(reason) { this.replaceDoc(new MP.Doc(this.doc.w, this.doc.h), reason); },
+    /* Fresh document with the task's provided layers (images scaled to fit) and blank working layers. */
+    async loadTaskCanvas(task, reason) {
+      const d = new MP.Doc(this.doc.w, this.doc.h);
+      d.layers.splice(1);
+      d.activeIndex = 0;
+      for (const sl of task.startLayers || []) {
+        const img = await U.loadImage(sl.image);
+        const L = new MP.Layer(d.w, d.h, sl.name);
+        const s = Math.min(d.w / img.width, d.h / img.height);
+        L.ctx.drawImage(img, (d.w - img.width * s) / 2, (d.h - img.height * s) / 2, img.width * s, img.height * s);
+        L.opacity = sl.opacity == null ? 1 : sl.opacity;
+        d.addLayer(null, { layer: L, record: false });
+      }
+      for (const name of task.newLayers || []) d.addLayer(name, { record: false });
+      if (d.layers.length === 1) d.addLayer('Layer 1', { record: false });
+      this.replaceDoc(d, reason);
+      this.logEvent('task_canvas', { layers: d.layers.map((L) => L.name) });
+    },
     scheduleThumbs() {
       clearTimeout(this._thumbT);
       this._thumbT = setTimeout(() => this.ui.refreshThumbs(), 250);
@@ -103,6 +123,8 @@
       this.lastSwitchT = null;
       this.lastUndoT = -Infinity;
       this.lastStroke = null;
+      this.lastLiftT = null;
+      this.pendingSwitch = null;
       this.logEvent('tool_initial', { tool: this.toolId, layerCount: this.doc.layers.length, zoom: U.round(this.view.scale, 3) });
     },
 
@@ -140,16 +162,21 @@
       if (this.stroking) return;
       const t = now(), from = this.toolId;
       const ctx = this.contextSnapshot();
-      const rank = this.engine.rank(ctx);
-      const ri = rank.list.findIndex((x) => x.tool === id);
-      const shown = this.suggest.adaptive ? this.suggest.displayed : null;
-      const k = this.suggest.cfg.k;
       const { clientX, clientY, ...extra } = meta;
+      let model = { condition: 'logging' };
+      if (MP.LOGGING_ONLY && this.suggest.visible) model = { condition: 'logging', shown: this.suggest.displayed, inSuggestions: this.suggest.displayed.includes(id) };
+      if (!MP.LOGGING_ONLY) {
+        const rank = this.engine.rank(ctx);
+        const ri = rank.list.findIndex((x) => x.tool === id);
+        const shown = this.suggest.adaptive ? this.suggest.displayed : null;
+        model = {
+          condition: this.engine.mode, predictor: rank.predictor, fallback: rank.fallback || undefined,
+          shown, inSuggestions: shown ? shown.includes(id) : null,
+          modelTopK: rank.list.slice(0, this.suggest.cfg.k).map((x) => x.tool), modelRank: ri + 1, modelP: ri >= 0 ? U.round(rank.list[ri].p, 4) : null,
+        };
+      }
       this.logEvent('tool_change', {
-        from, to: id, method, ...extra,
-        condition: this.engine.mode, predictor: rank.predictor, fallback: rank.fallback || undefined,
-        shown, inSuggestions: shown ? shown.includes(id) : null,
-        modelTopK: rank.list.slice(0, k).map((x) => x.tool), modelRank: ri + 1, modelP: ri >= 0 ? U.round(rank.list[ri].p, 4) : null,
+        from, to: id, method, ...extra, ...model,
         ...this.travelFrom(meta),
         msSinceLastSwitch: this.lastSwitchT != null ? Math.round(t - this.lastSwitchT) : null,
         msInPrevTool: Math.round(t - this.toolSince), strokesInPrevTool: this.strokesInTool,
@@ -157,13 +184,13 @@
         zoom: U.round(ctx.zoom, 3), layerCount: ctx.layerCount, selectionActive: ctx.selectionActive,
       });
       const ls = this.lastSwitch;
-      if (ls && t - ls.t <= 3000 && method !== 'auto_return' && ls.method !== 'auto_return') {
+      if (ls && t - ls.t <= 3000 && ls.strokes === 0 && method !== 'auto_return' && ls.method !== 'auto_return') {
         this.logEvent('wrong_tool_correction', {
           kind: 'reswitch', wrongTool: ls.to, wrongMethod: ls.method, previousTool: ls.from, correctedTo: id, correctedMethod: method,
           latencyMs: Math.round(t - ls.t), strokesWithWrongTool: ls.strokes, returnedToPrevious: id === ls.from,
         });
       }
-      this.engine.observe(from, id, ctx.features);
+      if (!MP.LOGGING_ONLY) this.engine.observe(from, id, ctx.features);
 
       if (this.tool.deactivate) this.tool.deactivate();
       this.prevToolId = from;
@@ -174,6 +201,9 @@
       this.strokesInTool = 0;
       this.lastSwitchT = t;
       this.lastSwitch = { t, from, to: id, method, strokes: 0, undoLogged: false };
+      // tool-switch time runs from the last pen lift (or this switch, if nothing was drawn yet) to the first stroke with the new tool
+      if (!this.pendingSwitch) this.pendingSwitch = { from, t, liftT: this.lastLiftT != null ? this.lastLiftT : t, switches: 0 };
+      this.pendingSwitch.switches++;
       this.ui.refreshToolbar();
       this.ui.refreshOptions();
       this.setCanvasCursor();
@@ -247,7 +277,7 @@
       this.lastUndoT = t;
       this.logEvent('undo', { method, label: cmd.label, tool: this.toolId });
       const ls = this.lastSwitch;
-      if (ls && !ls.undoLogged && ls.strokes > 0 && t - ls.t <= 3000) {
+      if (ls && !ls.undoLogged && t - ls.t <= 3000) {
         ls.undoLogged = true;
         this.logEvent('wrong_tool_correction', { kind: 'undo', wrongTool: ls.to, wrongMethod: ls.method, previousTool: ls.from, latencyMs: Math.round(t - ls.t), strokesWithWrongTool: ls.strokes });
       }
@@ -435,6 +465,14 @@
         tool: tool.id, via, t0: t, last: p, len: 0, slen: 0, samples: 1, pressures: [p.pressure], speeds: [], tilts: [],
         pointerType: e.pointerType, hoverMs: this.penHoverStart != null ? Math.round(t - this.penHoverStart) : null,
       };
+      const ps = this.pendingSwitch;
+      if (ps && !via) {
+        this.pendingSwitch = null;
+        this.logEvent('tool_switch_time', {
+          from: ps.from, to: tool.id, switchTimeMs: Math.round(t - ps.liftT), sinceLastSwitchMs: Math.round(t - this.lastSwitchT),
+          switches: ps.switches, fromLift: this.lastLiftT != null && ps.liftT === this.lastLiftT,
+        });
+      }
       this.logEvent('stroke_start', {
         tool: tool.id, via: via || undefined, x: Math.round(p.x), y: Math.round(p.y), pressure: U.round(p.pressure, 3),
         pointerType: e.pointerType, layer: this.doc.activeIndex, hoverMs: this.stroke.hoverMs,
@@ -522,6 +560,7 @@
         cancelled: cancelled || undefined, ...(tool.strokeInfo || {}),
       });
       tool.strokeInfo = null;
+      this.lastLiftT = now();
       if (!s.via) {
         this.strokesInTool++;
         if (this.lastSwitch) this.lastSwitch.strokes++;

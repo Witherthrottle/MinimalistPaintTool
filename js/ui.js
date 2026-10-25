@@ -126,6 +126,7 @@
         { id: 'study', label: 'Study', items: [
           { label: 'Session setup…', act: () => a.study.showSetup() },
           { label: 'Start / finish task', act: () => a.study.toggleTask() },
+          { label: 'Pause task', act: () => a.study.togglePause() },
           { label: 'NASA-TLX questionnaire', act: () => a.study.showTLX() },
           { label: 'SUS questionnaire', act: () => a.study.showSUS() },
           { sep: 1 },
@@ -674,10 +675,18 @@
       sb.sel.textContent = d.selection ? `Sel ${Math.round(d.selection.bbox.x1 - d.selection.bbox.x0)}×${Math.round(d.selection.bbox.y1 - d.selection.bbox.y0)}` : '';
       sb.pen.textContent = a.lastPointer ? `${a.lastPointer.type}${a.lastPointer.type === 'pen' ? ' · p ' + a.lastPointer.pressure.toFixed(2) : ''}` : '';
       const modeLbl = { static: 'Static', 'adaptive-generic': 'Adaptive · generic', 'adaptive-personalized': 'Adaptive · personalized' }[a.engine.mode];
-      sb.mode.textContent = modeLbl + (a.engine.mode !== 'static' ? ` · ${a.engine.predictorId} · k=${a.suggest.cfg.k}` : '');
+      sb.mode.textContent = MP.LOGGING_ONLY ? 'Logging only' : modeLbl + (a.engine.mode !== 'static' ? ` · ${a.engine.predictorId} · k=${a.suggest.cfg.k}` : '');
       const L = a.logger;
-      sb.log.textContent = L.active ? `● ${L.events.length} events${L.lastSaved ? ' · saved' : ''}` : 'not logging';
+      const up = a.uploader;
+      let upTxt = '';
+      if (L.active && up.enabled) {
+        const pend = up.pending();
+        upTxt = up.status === 'error' ? ' · upload failed, retrying' : up.status === 'uploading' ? ' · uploading…' : pend > 0 ? ` · ${pend} to upload` : ' · uploaded';
+      }
+      sb.log.textContent = L.active ? `● ${L.events.length} events${L.lastSaved ? ' · saved' : ''}${upTxt}` : 'not logging';
+      sb.log.title = up.lastError ? 'Upload error: ' + up.lastError : '';
       sb.log.classList.toggle('on', L.active);
+      sb.log.classList.toggle('warn', L.active && up.status === 'error');
     }
 
     /* ======================= modal & toast ======================= */

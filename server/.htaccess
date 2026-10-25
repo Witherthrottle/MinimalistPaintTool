@@ -1,0 +1,5 @@
+# Never serve config files, even by accident.
+<FilesMatch "^(config|config\.sample)\.php$">
+  Require all denied
+</FilesMatch>
+Options -Indexes

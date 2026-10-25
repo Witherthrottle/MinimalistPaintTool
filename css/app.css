@@ -134,7 +134,11 @@ kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; backgroun
 
 .task-head { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .task-timer { font-variant-numeric: tabular-nums; }
-.task-timer.over { color: #ff8a80; font-weight: 600; }
+.pause-body { text-align: center; }
+.task-est { font-size: 12px; margin-top: -4px; }
+.qtext { width: 100%; margin-top: 6px; font: inherit; color: var(--text); background: #1b1c20; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+select.err { border-color: var(--danger); outline: 1px solid var(--danger); }
+.pause-clock { font-size: 34px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 6px 0; }
 .task-title { font-weight: 650; font-size: 14px; }
 .task-prompt { margin: 0; }
 .task-steps { margin: 0; padding-left: 18px; color: #c9cbd1; font-size: 12.5px; }
@@ -181,6 +185,7 @@ img.ref-big { width: 100%; max-height: 70vh; object-fit: contain; background: #f
 #statusbar { display: flex; align-items: center; gap: 14px; padding: 0 10px; background: #18191c; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
 #statusbar .sb-spacer { flex: 1; }
 #statusbar .sb-log.on { color: #7ee2a8; }
+#statusbar .sb-log.warn { color: #ffb86b; }
 
 /* ---------- modals ---------- */
 .modal-back { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
@@ -235,6 +240,8 @@ input.err { border-color: var(--danger); outline: 1px solid var(--danger); }
 @media (max-width: 900px) {
   #workspace { grid-template-columns: 56px 1fr 0; }
   #panels { display: none; }
+  #menubar { overflow-x: auto; scrollbar-width: none; }
+  .brand, #session-info .si-cond { display: none; }
   .frow { grid-template-columns: 1fr; }
   .frow .fhint { grid-column: 1; }
   #livelog { right: 10px; width: calc(100vw - 20px); }

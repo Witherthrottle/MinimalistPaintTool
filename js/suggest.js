@@ -41,10 +41,14 @@
     }
 
     get adaptive() { return this.app.engine.mode !== 'static'; }
-    get displayed() { return this.pinned.concat(this.dyn).filter(Boolean).slice(0, this.cfg.k); }
+    /* Logging phase: a fixed, non-predictive quick-tools bar (MP.CONFIG.staticBar), if configured. */
+    get staticTools() { return MP.LOGGING_ONLY ? ((MP.CONFIG && MP.CONFIG.staticBar) || []).filter((t) => MP.TOOLS[t]) : []; }
+    get visible() { return this.adaptive || this.staticTools.length > 0; }
+    get displayed() { return this.pinned.concat(this.dyn).filter(Boolean).slice(0, MP.LOGGING_ONLY ? this.staticTools.length : this.cfg.k); }
 
     /* Recompute the ranking; apply it to the display if the dwell time allows. */
     refresh(reason, { force = false } = {}) {
+      if (MP.LOGGING_ONLY) { this.pinned = []; this.dyn = this.staticTools; this.render(); return; }
       const app = this.app;
       const ctx = app.contextSnapshot();
       const rank = app.engine.rank(ctx);
@@ -151,15 +155,16 @@
 
     /* ---------- rendering ---------- */
     render() {
-      const show = this.adaptive && this.cfg.style === 'bar';
+      const show = MP.LOGGING_ONLY ? this.staticTools.length > 0 : this.adaptive && this.cfg.style === 'bar';
       this.el.classList.toggle('hidden', !show);
       if (!show) return;
       this.el.innerHTML = '';
       const grip = U.el('div', { class: 'grip', title: 'Drag to move' });
       this.bindDrag(grip);
       this.el.append(grip);
-      const slots = this.pinned.concat(this.dyn).slice(0, this.cfg.k);
-      while (slots.length < this.cfg.k) slots.push(null);
+      const k = MP.LOGGING_ONLY ? this.staticTools.length : this.cfg.k;
+      const slots = this.pinned.concat(this.dyn).slice(0, k);
+      while (slots.length < k) slots.push(null);
       slots.forEach((t, i) => {
         const pinned = i < this.pinned.length;
         if (!t) { this.el.append(U.el('div', { class: 'sg-slot empty' })); return; }

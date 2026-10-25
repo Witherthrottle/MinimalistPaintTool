@@ -1,0 +1,3 @@
+# Only needed if your data folder has to live inside public_html.
+# Copy this file into that folder and rename it to .htaccess.
+Require all denied

@@ -235,8 +235,6 @@
       let list = pred.predict(this.history, ctx);
       let used = pred.id, fallback = false;
       if (!list) { list = this.predictors.markov1.predict(this.history, ctx); used = 'markov1'; fallback = true; }
-      // keep the GRU hidden state fresh even when another predictor is shown, so the personal GRU keeps learning
-      if (pred.id !== 'gru' && this.gruModel()) this.predictors.gru.predict(this.history, ctx);
       list = normalise(list.filter((x) => x.tool !== ctx.tool));
       return { list, predictor: used, fallback };
     }
