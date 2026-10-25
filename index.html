@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Minimalist Paint</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <header id="menubar">
+      <div class="brand">Minimalist&nbsp;Paint</div>
+      <nav id="menus"></nav>
+      <div class="spacer"></div>
+      <div id="session-info"></div>
+    </header>
+
+    <div id="optionsbar"></div>
+
+    <main id="workspace">
+      <aside id="toolbar"></aside>
+
+      <section id="stage">
+        <canvas id="view"></canvas>
+        <div id="suggest" class="suggest hidden"></div>
+        <div id="radial" class="radial hidden"></div>
+        <div id="toast"></div>
+      </section>
+
+      <aside id="panels"></aside>
+    </main>
+
+    <footer id="statusbar"></footer>
+  </div>
+
+  <div id="flyout" class="flyout hidden"></div>
+  <div id="menu-layer"></div>
+  <div id="popover" class="popover hidden"></div>
+  <div id="modal-root"></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/tools-def.js"></script>
+  <script src="js/document.js"></script>
+  <script src="js/view.js"></script>
+  <script src="js/brush.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/logger.js"></script>
+  <script src="js/gru.js"></script>
+  <script src="js/models/gru_default.js"></script>
+  <script src="js/predictors.js"></script>
+  <script src="js/suggest.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/study.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
