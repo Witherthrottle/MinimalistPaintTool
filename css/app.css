@@ -25,7 +25,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
 kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: #18191c; border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; }
 
-#app { display: grid; grid-template-rows: 30px 40px 1fr 24px; height: 100vh; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+#menubar { flex: none; height: 30px; }
+#optionsbar { flex: none; height: 40px; }
+#statusbar { flex: none; height: 24px; }
+#workspace { flex: 1; }
 
 /* ---------- menubar ---------- */
 #menubar { display: flex; align-items: center; gap: 4px; padding: 0 8px; background: #18191c; border-bottom: 1px solid var(--line); user-select: none; }
@@ -35,6 +39,24 @@ kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; backgroun
 .menu-btn:hover, .menu-btn.open { background: var(--panel-2); }
 .spacer { flex: 1; }
 #session-info { display: flex; gap: 8px; align-items: center; }
+#taskbar { flex: none; height: 34px; display: flex; align-items: center; gap: 5px; padding: 0 12px; background: #1c1d21; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+#taskbar .tb-label, #taskbar .tb-count { color: var(--muted); font-size: 12px; margin: 0 6px; }
+#taskbar .tb-count { color: var(--text); font-variant-numeric: tabular-nums; }
+#taskbar .tb-warn { color: #ffb86b; font-size: 12px; }
+.tb-seg { position: relative; flex: 1 1 0; min-width: 30px; max-width: 84px; height: 20px; padding: 0; border: 1px solid #555862; border-radius: 4px; background: #2a2b30; overflow: hidden; cursor: pointer; flex: none; }
+.tb-seg.gap { margin-left: 12px; }
+.tb-seg:hover { border-color: #8a8d96; }
+.tb-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #2f6fd6; transition: width .3s; }
+.tb-seg.st-done .tb-fill { background: #2f9e5b; }
+.tb-num { position: relative; font-size: 11px; line-height: 16px; color: #e6e7ea; font-variant-numeric: tabular-nums; }
+.tb-seg.current { outline: 2px solid #ffffff; outline-offset: 1px; }
+.tb-seg.running::after { content: ""; position: absolute; right: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: #ffcf5a; animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.login-tabs { margin-bottom: 10px; }
+.login-msg { color: #ff8a80; min-height: 18px; margin-top: 8px; }
+.login-row { justify-content: flex-end; }
+.linkish { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 10px 0 0; font-size: 12px; }
+.small { font-size: 12px; }
 #session-info span { padding: 2px 8px; border-radius: 10px; background: var(--panel-2); font-size: 12px; }
 #session-info .si-cond { background: #233a5c; color: #bcd6ff; }
 #session-info .si-timer { font-variant-numeric: tabular-nums; }

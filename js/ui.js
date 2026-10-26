@@ -124,7 +124,8 @@
         ] },
         { id: 'tools', label: 'Tools', items: toolItems },
         { id: 'study', label: 'Study', items: [
-          { label: 'Session setup…', act: () => a.study.showSetup() },
+          { label: 'Log out', act: () => a.study.confirmLogout(), disabled: () => !a.study.accountMode },
+          { label: 'Local session without login…', act: () => a.study.showSetup() },
           { label: 'Start / finish task', act: () => a.study.toggleTask() },
           { label: 'Pause task', act: () => a.study.togglePause() },
           { label: 'NASA-TLX questionnaire', act: () => a.study.showTLX() },

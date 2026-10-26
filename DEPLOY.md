@@ -31,7 +31,15 @@ Object.assign(window.MP.CONFIG, { uploadUrl: 'https://<domain>/server/collect.ph
 EOF
 ```
 
-Later updates: `git pull`. Bump the `?v=` numbers in `index.html` before you push, so browsers reload.
+Later updates: `git pull`.
+
+**Participant accounts.** When an upload URL is set, the app opens with a sign-in screen. New participants
+register with a code (e.g. P07), a PIN and their profile. All 12 Phase 1 tasks then appear as blocks
+under the menu bar; each task's canvas and active time are saved by `server/api.php` (autosave every 30 s,
+plus on Done, switching tasks and logging out), so people can stop and continue later on any computer.
+Accounts live in `study-data/participants/<code>/`. The admin page lists every participant's progress and
+can reset a forgotten PIN. With no upload URL, accounts are kept in the browser instead (single lab
+machine). Set `accounts: false` in `js/config.js` to go back to the old one-session setup screen. Bump the `?v=` numbers in `index.html` before you push, so browsers reload.
 Admin page: `https://<domain>/server/admin.php`.
 
 The manual route below does the same thing, with the endpoint under `api/` instead.

@@ -114,50 +114,77 @@
     <path d="M330 326h70" stroke="#ffcf5a" stroke-width="4" opacity=".5"/>`,
     '<linearGradient id="ns" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121a3a"/><stop offset="1" stop-color="#3a4f8a"/></linearGradient>');
 
-  /* ---------- messy sketches (start canvas, transparent so the white background shows) ---------- */
-  const MESSY_CAFE = transparent(`
-    <g fill="none" stroke="#2a2a2a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M40 400h720"/>
-      <ellipse cx="300" cy="392" rx="130" ry="22" fill="#d9363e"/>
-      <path d="M220 250h160l-18 130c-2 12-12 18-24 18h-76c-12 0-22-6-24-18z" fill="#f4efe6"/>
-      <ellipse cx="300" cy="250" rx="80" ry="14" fill="#6b3f24"/>
-      <path d="M380 280c40-6 52 36 22 52"/><path d="M402 346c-6 6-14 8-24 8"/>
-      <path d="M560 210c-10-24 14-30 4-56M590 210c-10-24 14-30 4-56M620 210c-10-24 14-30 4-56"/>
-      <path d="M120 330l230-120" stroke-width="10"/><ellipse cx="370" cy="200" rx="34" ry="20" transform="rotate(-28 370 200)"/>
-      <path d="M640 400l-14-80h88l-14 80z" fill="#c8794a"/><path d="M670 320c-20-40 0-80 30-90M670 320c10-50 50-70 70-60M670 320c-40-20-50-60-40-80" stroke="#2f7d3a"/>
-      <circle cx="520" cy="380" r="26" fill="#d9a35b"/><circle cx="512" cy="374" r="3" fill="#5b3a1e"/><circle cx="528" cy="386" r="3" fill="#5b3a1e"/>
-    </g>
-    <g fill="none" stroke="#555" stroke-width="3" stroke-linecap="round">
-      <path d="M80 120l30-20 20 30 30-25 20 30 25-20"/><path d="M450 90c30 10 60-20 90 0s50 10 70-10"/><path d="M90 470l40-25 30 25 35-30"/>
-      <path d="M720 120l-30 40M700 110l40 30"/>
-    </g>`);
-  const MESSY_HOUSE = transparent(`
-    <g fill="none" stroke="#2a2a2a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M30 420h740"/>
-      <rect x="300" y="250" width="220" height="170" fill="#f1e2c4"/>
-      <path d="M280 255l130-100 130 100z" fill="#4caf50"/>
-      <path d="M380 420v-80l46-6 6 86"/>
-      <rect x="320" y="280" width="44" height="40" fill="#9fd3ff"/><rect x="456" y="280" width="44" height="40" fill="#9fd3ff"/>
-      <circle cx="650" cy="110" r="80" fill="#ffd23f"/>
-      <path d="M140 420v-90" stroke-width="12" stroke="#6b4423"/><circle cx="140" cy="290" r="60" fill="#3f8f4f"/>
-      <path d="M120 120c0-20 30-30 40-14 10-20 46-16 46 8 20 0 26 26 6 32h-86c-20-2-24-24-6-26z" fill="#ffffff"/>
-    </g>
-    <g fill="none" stroke="#555" stroke-width="3" stroke-linecap="round">
-      <path d="M560 300l20 20 20-20 20 20 20-20"/><path d="M330 350c20-10 30 10 50 0"/><path d="M40 60l60 40M60 40l20 70"/><path d="M600 470c40-20 80 10 120-10"/>
-    </g>`);
-  const MESSY_FRUIT = transparent(`
-    <g fill="none" stroke="#2a2a2a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M40 410h720"/>
-      <path d="M220 300h300c0 70-60 110-150 110s-150-40-150-110z" fill="#e7d3b0"/>
-      <circle cx="320" cy="270" r="44" fill="#8e44ad"/><path d="M320 226c4-14 10-20 18-24"/>
-      <path d="M370 250c40-50 110-50 140-20"/><path d="M380 270c40-30 100-30 124-8"/><path d="M510 230l4 34"/>
-      <path d="M650 410c-30 0-46-26-40-56 4-24 16-30 18-52 2-14 30-14 32 0 2 22 14 28 18 52 6 30-10 56-40 56z" fill="#c9d84a"/>
-      <circle cx="430" cy="180" r="56" fill="#6c3483"/>
-      <circle cx="160" cy="390" r="16" fill="#c0392b"/><path d="M160 374c0-20 10-30 22-36"/>
-    </g>
-    <g fill="none" stroke="#555" stroke-width="3" stroke-linecap="round">
-      <path d="M90 120l40-20 20 30 40-30"/><path d="M560 120c20 20 50-10 70 10s40 0 50-20"/><path d="M250 460l30-20 30 20 30-20 30 20"/><path d="M700 60l-40 50M670 60l40 50"/>
-    </g>`);
+  /* ---------- messy sketches: rough pencil start canvas + clean colored target ----------
+     Each scene function builds the drawing twice: fixed=false gives the rough sketch (mistakes in place),
+     fixed=true the corrected target. f(color) returns the fill attribute so shapes are shared. */
+  const ROUGH = '<filter id="w1" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="7"/></filter>' +
+    '<filter id="w2" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="11"/><feDisplacementMap in="SourceGraphic" scale="11"/></filter>';
+  const GUIDES = (d) => `<g fill="none" stroke="#c9c9c9" stroke-width="1.5">${d}</g>`;
+  const SCRIBBLE = (d) => `<g fill="none" stroke="#7a7a7a" stroke-width="2.5" stroke-linecap="round" filter="url(#w1)">${d}</g>`;
+  /* wrong: the wrongly colored patch (drawn under the lines); extras: guides + scribbles (drawn on top) */
+  const roughSketch = (lines, wrong, extras) => transparent(`<defs>${ROUGH}</defs>
+    <g filter="url(#w1)" opacity=".85">${wrong}</g>
+    <g fill="none" stroke="#a8a8a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#w2)" transform="translate(3 2)">${lines}</g>
+    <g fill="none" stroke="#3c3c3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#w1)">${lines}</g>${extras}`);
+  const cleanTarget = (body) => svg(`<g stroke="#1e1e1e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${body}</g>`);
+  const messyPair = (scene, wrong, extras) => ({
+    sketch: roughSketch(scene(() => 'fill="none"', false), wrong, extras),
+    target: cleanTarget(scene((c) => `fill="${c}"`, true)),
+  });
+
+  const cafe = (f, fixed) => {
+    const steamX = fixed ? 0 : 290, plantY = fixed ? 0 : -165;
+    const leaf = fixed ? 'stroke="#2f7d3a"' : '';
+    return `<path d="M40 400h720"/>
+      <ellipse cx="300" cy="392" rx="130" ry="22" ${f('#3d7fd6')}/>
+      <path d="M220 250h160l-18 130c-2 12-12 18-24 18h-76c-12 0-22-6-24-18z" ${f('#f4efe6')}/>
+      <ellipse cx="300" cy="250" rx="80" ry="14" ${f('#6b3f24')}/>
+      ${fixed ? '<path d="M380 280c40-6 52 36 22 52c-6 6-14 8-24 8" fill="none"/>' : '<path d="M380 280c40-6 52 36 22 48"/><path d="M396 352c-6 3-12 4-18 3"/>'}
+      <path d="M270 225c-10-24 14-30 4-56M300 225c-10-24 14-30 4-56M330 225c-10-24 14-30 4-56" fill="none" transform="translate(${steamX} 0)"/>
+      ${fixed ? `<path d="M70 396l66-26" fill="none"/><ellipse cx="146" cy="366" rx="16" ry="9" transform="rotate(-23 146 366)" ${f('#c0c4c8')}/>`
+        : '<path d="M120 330l230-120" stroke-width="10"/><ellipse cx="372" cy="198" rx="38" ry="22" transform="rotate(-28 372 198)"/>'}
+      ${(fixed ? [470, 520, 570] : [520]).map((x) => `<circle cx="${x}" cy="378" r="22" ${f('#d9a35b')}/><circle cx="${x - 7}" cy="372" r="3" ${f('#5b3a1e')}/><circle cx="${x + 7}" cy="384" r="3" ${f('#5b3a1e')}/>`).join('')}
+      <g transform="translate(0 ${plantY})"><path d="M640 400l-14-80h88l-14 80z" ${f('#c8794a')}/><path d="M670 320c-20-40 0-80 30-90M670 320c10-50 50-70 70-60M670 320c-40-20-50-60-40-80" fill="none" ${leaf}/></g>`;
+  };
+  const CAFE = messyPair(cafe,
+    '<ellipse cx="300" cy="392" rx="132" ry="24" fill="#d9363e"/>',
+    GUIDES('<circle cx="300" cy="310" r="125"/><path d="M300 160v260M150 250h300M150 392h300"/>') +
+    SCRIBBLE('<path d="M80 120l30-20 20 30 30-25 20 30 25-20"/><path d="M450 70c30 10 60-20 90 0s50 10 70-10"/><path d="M90 470l40-25 30 25 35-30"/><path d="M450 300l30 30M440 330l40-30"/>'));
+
+  const house = (f, fixed) => {
+    const treeX = fixed ? 650 : 140;
+    const trunk = fixed ? 'stroke="#6b4423"' : '';
+    const cloud = (dx, dy) => `<path d="M120 120c0-20 30-30 40-14 10-20 46-16 46 8 20 0 26 26 6 32h-86c-20-2-24-24-6-26z" transform="translate(${dx} ${dy})" ${f('#ffffff')}/>`;
+    return `<path d="M30 420h740"/>
+      ${fixed ? `<rect x="460" y="168" width="28" height="60" ${f('#8d5a3b')}/>` : ''}
+      <rect x="300" y="250" width="220" height="170" ${f('#f1e2c4')}/>
+      <path d="M280 255l130-100 130 100z" ${f('#c0392b')}/>
+      ${fixed ? `<rect x="386" y="340" width="44" height="80" ${f('#7a4b2a')}/>` : '<path d="M380 420v-80l46-6 6 86"/>'}
+      <rect x="320" y="280" width="44" height="40" ${f('#9fd3ff')}/><rect x="456" y="280" width="44" height="40" ${f('#9fd3ff')}/>
+      ${fixed ? `<circle cx="715" cy="70" r="36" ${f('#ffd23f')}/>` : '<circle cx="600" cy="130" r="95"/>'}
+      <g transform="translate(${treeX} 0)"><path d="M0 420v-90" stroke-width="12" ${trunk}/><circle cx="0" cy="290" r="60" ${f('#3f8f4f')}/></g>
+      ${cloud(0, 0)}${fixed ? cloud(190, -40) + cloud(330, 10) : ''}`;
+  };
+  const HOUSE = messyPair(house,
+    '<path d="M276 258l134-106 134 106z" fill="#4caf50"/>',
+    GUIDES('<path d="M410 140v290M260 255h300"/><rect x="290" y="240" width="240" height="190"/>') +
+    SCRIBBLE('<path d="M560 330l20 20 20-20 20 20 20-20"/><path d="M330 360c20-10 30 10 50 0"/><path d="M40 60l60 40M60 40l20 70"/><path d="M600 470c40-20 80 10 120-10"/>'));
+
+  const fruit = (f, fixed) => {
+    const pear = `<path d="M650 410c-30 0-46-26-40-56 4-24 16-30 18-52 2-14 30-14 32 0 2 22 14 28 18 52 6 30-10 56-40 56z" ${f('#c9d84a')} transform="translate(${fixed ? '-190 -112' : '0 0'})"/>`;
+    const banana = fixed ? `<path d="M370 250c40-50 110-50 140-20l4 34c-24-22-84-22-124 8z" ${f('#f4d03f')}/>` : '<path d="M370 250c40-50 110-50 140-20"/><path d="M386 272c40-30 100-30 124-8"/>';
+    const grapes = fixed ? [[392, 262], [410, 274], [390, 284], [408, 290]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="13" ${f('#7d3c98')}/>`).join('') : '<circle cx="430" cy="180" r="56"/>';
+    const cherries = (fixed ? [140, 178, 216] : [160]).map((x) => `<circle cx="${x}" cy="392" r="16" ${f('#c0392b')}/><path d="M${x} 376c0-20 10-30 22-36" fill="none"/>`).join('');
+    return `<path d="M40 410h720"/>
+      <circle cx="320" cy="270" r="44" ${f('#d63031')}/><path d="M320 226c4-14 10-20 18-24" fill="none"/>
+      ${fixed ? pear + grapes + banana : banana}
+      <path d="M220 300h300c0 70-60 110-150 110s-150-40-150-110z" ${f('#e7d3b0')}/>
+      ${fixed ? '' : pear + grapes}${cherries}`;
+  };
+  const FRUIT = messyPair(fruit,
+    '<circle cx="320" cy="270" r="46" fill="#8e44ad"/>',
+    GUIDES('<ellipse cx="370" cy="300" rx="170" ry="40"/><path d="M370 150v280M180 300h380"/>') +
+    SCRIBBLE('<path d="M90 120l40-20 20 30 40-30"/><path d="M560 120c20 20 50-10 70 10s40 0 50-20"/><path d="M250 460l30-20 30 20 30-20 30 20"/><path d="M700 60l-40 50M670 60l40 50"/>'));
 
   /* ---------- layered illustration references ---------- */
   const NIGHT = svg(`
@@ -223,13 +250,13 @@
     ].concat(extra),
     image,
   });
-  const messy = (id, name, image, fixes) => ({
-    id, type: 'edit', estMin: 10,
+  const messy = (id, name, pair, fixes) => ({
+    id, type: 'edit', estMin: 15,
     title: `Fix the messy sketch: ${name}`,
-    prompt: 'The canvas starts with a messy sketch. Make every fix in the list.',
+    prompt: 'The canvas starts with a rough sketch full of mistakes. Fix everything in the list so it matches the target picture.',
     steps: fixes,
-    image,
-    startLayers: [{ name: 'Messy sketch', image, opacity: 1 }],
+    image: pair.target,
+    startLayers: [{ name: 'Rough sketch', image: pair.sketch, opacity: 1 }],
   });
   const layered = (id, name, image, layers) => ({
     id, type: 'layered', estMin: 15,
@@ -248,42 +275,45 @@
   const S1 = [
     trace('P1-S1-trace', 'Rocket badge', ROCKET),
     scene('P1-S1-scene', 'Mountain lake at sunset', LAKE, ['Mirror the mountains in the lake: copy with Lasso, Move, then Transform (flip by dragging a corner past the middle)', 'Eyedropper colors from your sky into the water']),
-    messy('P1-S1-edit', 'Coffee table', MESSY_CAFE, [
-      'Erase all gray scribbles (four of them)',
-      'Close the gap in the mug handle with the Ink Pen',
+    messy('P1-S1-edit', 'Coffee table', CAFE, [
+      'Erase the four gray scribbles and the light construction lines',
+      'Close the gap in the mug handle',
       'Recolor the red saucer blue',
-      'Move the steam from the right side so it rises from the mug',
-      'Shrink the oversized spoon to fit next to the mug (Lasso + Transform)',
-      'Clone the cookie twice so there are three',
-      'Move the plant closer to the mug',
+      'Move the steam from the right so it rises from the mug',
+      'The plant is floating: move it down onto the table',
+      'Shrink the oversized spoon and put it on the table left of the saucer (Lasso + Transform)',
+      'Clone the cookie so there are three',
+      'Ink clean lines on a new layer, then color the mug, coffee and plant to match the target',
     ]),
     layered('P1-S1-layer', 'Night street', NIGHT, ['Sky', 'Buildings', 'Street', 'Lamp & glow']),
   ];
   const S2 = [
     trace('P1-S2-trace', 'Camera', CAMERA),
     scene('P1-S2-scene', 'Desert canyon', CANYON, ['Draw the rock layers on the mesas with the Line tool', 'Add cactus shadows on the sand with a low-opacity Brush']),
-    messy('P1-S2-edit', 'House and tree', MESSY_HOUSE, [
-      'Erase all gray scribbles (four of them)',
+    messy('P1-S2-edit', 'House and tree', HOUSE, [
+      'Erase the four gray scribbles and the light construction lines',
       'Recolor the green roof red',
-      'Straighten the crooked door (erase and redraw with Line or Rectangle)',
+      'Straighten the crooked door (erase it, redraw with the Rectangle tool)',
       'Move the tree to the right side of the house',
-      'Shrink the huge sun and move it into a corner',
+      'Shrink the huge sun and move it to the top-right corner',
       'Clone the cloud so there are three',
       'Add a chimney with the Rectangle tool',
+      'Ink clean lines on a new layer, then color the walls, windows, door and tree',
     ]),
     layered('P1-S2-layer', 'Underwater scene', SEA, ['Water', 'Light rays', 'Seaweed & sand', 'Fish', 'Bubbles']),
   ];
   const S3 = [
     trace('P1-S3-trace', 'Light bulb', BULB),
     scene('P1-S3-scene', 'Snowy forest cabin', CABIN, ['Glow from the window: Airbrush on a layer with lowered opacity', 'Snow on the trees and roof with a white Brush, then Smudge the edges']),
-    messy('P1-S3-edit', 'Fruit bowl', MESSY_FRUIT, [
-      'Erase all gray scribbles (four of them)',
+    messy('P1-S3-edit', 'Fruit bowl', FRUIT, [
+      'Erase the four gray scribbles and the light construction lines',
       'Recolor the purple apple red',
-      'Fix the banana: connect its two outlines at the ends',
+      'Close the banana: join its two outlines at both ends',
       'Move the pear into the bowl',
-      'Shrink the giant grape and place it in the bowl',
+      'Shrink the giant grape, then clone it into a small bunch in the bowl',
       'Clone the cherry so there are three',
       'Color the bowl with a Gradient',
+      'Ink clean lines on a new layer, then color the remaining fruit',
     ]),
     layered('P1-S3-layer', 'Hot-air balloons', BALLOONS, ['Sky', 'Clouds', 'Far hills', 'Near hills', 'Balloons']),
   ];

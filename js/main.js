@@ -32,6 +32,7 @@
       this.tool = this.tools[this.toolId];
       this.logger = new MP.Logger();
       this.uploader = new MP.Uploader(this.logger);
+      this.account = new MP.Account(this);
       this.engine = new MP.PredictionEngine();
       this.suggest = new MP.Suggestions(this);
       this.ui = new MP.UI(this);
@@ -49,18 +50,22 @@
       this._optLog = {};
       this._colorLog = U.debounce((which, color, source) => this.logEvent('color_change', { which, color, source }), 350);
       this.suggest.refresh('init', { force: true });
-      if (!/[?&]nosetup\b/.test(location.search)) this.study.showSetup(true);
+      if (!/[?&]nosetup\b/.test(location.search)) this.study.boot();
     },
 
     /* ======================= document ======================= */
     attachDoc() {
       const d = this.doc;
+      if (d._attached) return; // cached task documents are re-shown; don't stack listeners
+      d._attached = true;
+      d.on('history', () => { d.dirty = true; });
       d.on('change', () => this.view.dirty());
       d.on('layers', () => { this.ui.refreshLayers(); this.ui.refreshStatus(); });
       d.on('history', () => { this.ui.refreshHistory(); this.scheduleThumbs(); });
       d.on('selection', () => this.ui.refreshStatus());
     },
-    replaceDoc(d, reason) {
+    /* Swap the visible document (new, or a cached task document with its own undo history). */
+    showDoc(d) {
       this.commitPending();
       this.doc = d;
       this.attachDoc();
@@ -70,12 +75,20 @@
       this.ui.refreshLayers();
       this.ui.refreshHistory();
       this.ui.refreshStatus();
-      this.logEvent('canvas_new', { reason, w: d.w, h: d.h, layerCount: d.layers.length });
       if (this.toolId === 'transform') this.ui.refreshOptions();
+    },
+    replaceDoc(d, reason) {
+      this.showDoc(d);
+      this.logEvent('canvas_new', { reason, w: d.w, h: d.h, layerCount: d.layers.length });
     },
     resetDocument(reason) { this.replaceDoc(new MP.Doc(this.doc.w, this.doc.h), reason); },
     /* Fresh document with the task's provided layers (images scaled to fit) and blank working layers. */
     async loadTaskCanvas(task, reason) {
+      const d = await this.buildTaskDoc(task);
+      this.replaceDoc(d, reason);
+      this.logEvent('task_canvas', { layers: d.layers.map((L) => L.name) });
+    },
+    async buildTaskDoc(task) {
       const d = new MP.Doc(this.doc.w, this.doc.h);
       d.layers.splice(1);
       d.activeIndex = 0;
@@ -89,8 +102,27 @@
       }
       for (const name of task.newLayers || []) d.addLayer(name, { record: false });
       if (d.layers.length === 1) d.addLayer('Layer 1', { record: false });
-      this.replaceDoc(d, reason);
-      this.logEvent('task_canvas', { layers: d.layers.map((L) => L.name) });
+      return d;
+    },
+    /* Saved form of a document: layer PNGs plus layer settings. */
+    serializeDoc(d) {
+      return {
+        w: d.w, h: d.h, activeIndex: d.activeIndex, savedAt: new Date().toISOString(),
+        layers: d.layers.map((L) => ({ name: L.name, opacity: L.opacity, visible: L.visible, png: L.canvas.toDataURL('image/png') })),
+      };
+    },
+    async deserializeDoc(state) {
+      const d = new MP.Doc(state.w, state.h, { background: null });
+      d.layers.splice(0);
+      for (const ls of state.layers) {
+        const L = new MP.Layer(d.w, d.h, ls.name);
+        L.ctx.drawImage(await U.loadImage(ls.png), 0, 0);
+        L.opacity = ls.opacity;
+        L.visible = ls.visible !== false;
+        d.layers.push(L);
+      }
+      d.activeIndex = U.clamp(state.activeIndex || 0, 0, d.layers.length - 1);
+      return d;
     },
     scheduleThumbs() {
       clearTimeout(this._thumbT);
@@ -439,6 +471,7 @@
       const isEraserTip = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32) === 32);
 
       if (e.button === 1 || this.spaceDown || (isBarrel && this.input.barrel === 'pan')) { this.startPan(e, isBarrel ? 'barrel' : e.button === 1 ? 'middle' : 'space'); return; }
+      if (this.canvasLocked) { this.ui.toast(this.canvasLocked, 2500); return; }
       if (isBarrel && this.input.barrel === 'radial') {
         if (this.suggest.openRadial(p.sx, p.sy, 'barrel')) { c(this.canvas, e); return; }
       }

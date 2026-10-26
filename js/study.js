@@ -311,11 +311,13 @@
       const running = this.task && this.task.def === t;
       b.append(el('div', { class: 'task-head' }, el('span', { class: 'task-n' }, `Task ${this.taskIndex + 1}/${this.tasks.length}`), el('span', { class: 'task-timer', id: 'task-timer' }, running ? U.fmtTime(this.elapsed(this.task)) : '')));
       b.append(el('div', { class: 'task-title' }, t.title));
-      if (t.estMin && !running) b.append(el('div', { class: 'muted task-est' }, `About ${t.estMin} min · no time limit`));
+      const status = this.taskStatusLine(t, running);
+      if (status) b.append(status);
+      else if (t.estMin && !running) b.append(el('div', { class: 'muted task-est' }, `About ${t.estMin} min · no time limit`));
       if (t.prompt) b.append(el('p', { class: 'task-prompt' }, t.prompt));
       const START_NOTE = {
         trace: 'When you press Start, a faded drawing appears on the canvas (layer "Trace me"). Trace over it on the "Ink" layer.',
-        edit: 'When you press Start, this messy sketch appears on your canvas. It has deliberate mistakes; fix every item below.',
+        edit: 'When you press Start, a rough pencil sketch with deliberate mistakes appears on your canvas. Fix every item below so it ends up like the target picture.',
         scene: 'The canvas starts empty. Paint the scene yourself, using the picture below as reference.',
         layered: 'The canvas starts empty. Build the picture below from your own layers.',
       };
@@ -327,9 +329,15 @@
           this.app.logEvent('reference_view', { taskId: t.id });
           this.ui.modal({ title: 'Reference — ' + t.title, wide: true, body: el('img', { class: 'ref-big', src: t.image, alt: 'Reference image' }), actions: [{ label: 'Close', primary: true }] });
         });
-        const CAPTION = { trace: 'Target: how it should look when colored', edit: 'Starting sketch (this is what loads on your canvas)' };
+        const CAPTION = { trace: 'Target: how it should look when colored', edit: 'Target: what it should look like when fixed' };
         b.append(img, el('div', { class: 'muted ref-cap' }, CAPTION[t.type] || 'Reference: click to enlarge'));
       }
+      b.append(this.taskButtons(t, running));
+    }
+
+    taskStatusLine() { return null; }
+
+    taskButtons(t, running) {
       const row = el('div', { class: 'row' });
       if (running) {
         row.append(el('button', { class: 'ob-btn primary', onclick: () => this.finishTask() }, 'Done'),
@@ -339,7 +347,7 @@
         row.append(el('button', { class: 'ob-btn primary', onclick: () => this.startTask() }, 'Start task'),
           el('button', { class: 'ob-btn', onclick: () => { this.app.logEvent('task_skip', { taskId: t.id, index: this.taskIndex }); this.taskIndex++; this.renderTaskPanel(); } }, 'Skip'));
       }
-      b.append(row);
+      return row;
     }
 
     toggleTask() {
@@ -361,12 +369,12 @@
       this.app.taskId = t.id;
       this.renderTaskPanel();
       if (t.type === 'trace') this.ui.toast('Faded drawing loaded: trace it on the "Ink" layer', 3500);
-      else if (t.type === 'edit') this.ui.toast('Messy sketch loaded: fix the items in the task list', 3500);
+      else if (t.type === 'edit') this.ui.toast('Rough sketch loaded: fix it to match the target', 3500);
     }
 
     /* Active task time for the current attempt: wall time minus paused time. */
     elapsed(T) {
-      return Math.max(0, (T.pausedAt != null ? T.pausedAt : performance.now()) - T.start - T.pausedMs);
+      return (T.baseMs || 0) + Math.max(0, (T.pausedAt != null ? T.pausedAt : performance.now()) - T.start - T.pausedMs);
     }
 
     togglePause() {
