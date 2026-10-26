@@ -136,6 +136,8 @@ kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; backgroun
 .task-timer { font-variant-numeric: tabular-nums; }
 .pause-body { text-align: center; }
 .task-est { font-size: 12px; margin-top: -4px; }
+.task-start-note { background: #233a5c; border: 1px solid #3d6cb0; color: #d6e6ff; border-radius: 5px; padding: 7px 9px; font-size: 12.5px; }
+.ref-cap { font-size: 11.5px; margin-top: -4px; }
 .qtext { width: 100%; margin-top: 6px; font: inherit; color: var(--text); background: #1b1c20; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; resize: vertical; }
 select.err { border-color: var(--danger); outline: 1px solid var(--danger); }
 .pause-clock { font-size: 34px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 6px 0; }

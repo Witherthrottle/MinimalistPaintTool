@@ -313,6 +313,13 @@
       b.append(el('div', { class: 'task-title' }, t.title));
       if (t.estMin && !running) b.append(el('div', { class: 'muted task-est' }, `About ${t.estMin} min · no time limit`));
       if (t.prompt) b.append(el('p', { class: 'task-prompt' }, t.prompt));
+      const START_NOTE = {
+        trace: 'When you press Start, a faded drawing appears on the canvas (layer "Trace me"). Trace over it on the "Ink" layer.',
+        edit: 'When you press Start, this messy sketch appears on your canvas. It has deliberate mistakes; fix every item below.',
+        scene: 'The canvas starts empty. Paint the scene yourself, using the picture below as reference.',
+        layered: 'The canvas starts empty. Build the picture below from your own layers.',
+      };
+      if (START_NOTE[t.type]) b.append(el('div', { class: 'task-start-note' }, START_NOTE[t.type]));
       if (t.steps && t.steps.length) b.append(el('ol', { class: 'task-steps' }, t.steps.map((s) => el('li', {}, s))));
       if (t.image) {
         const img = el('img', { class: 'ref', src: t.image, alt: 'Reference image', title: 'Click to enlarge' });
@@ -320,7 +327,8 @@
           this.app.logEvent('reference_view', { taskId: t.id });
           this.ui.modal({ title: 'Reference — ' + t.title, wide: true, body: el('img', { class: 'ref-big', src: t.image, alt: 'Reference image' }), actions: [{ label: 'Close', primary: true }] });
         });
-        b.append(img);
+        const CAPTION = { trace: 'Target: how it should look when colored', edit: 'Starting sketch (this is what loads on your canvas)' };
+        b.append(img, el('div', { class: 'muted ref-cap' }, CAPTION[t.type] || 'Reference: click to enlarge'));
       }
       const row = el('div', { class: 'row' });
       if (running) {
@@ -352,6 +360,8 @@
       this.app.logEvent('task_start', { taskId: t.id, index: this.taskIndex, title: t.title, taskType: t.type || null, attempt: 1 });
       this.app.taskId = t.id;
       this.renderTaskPanel();
+      if (t.type === 'trace') this.ui.toast('Faded drawing loaded: trace it on the "Ink" layer', 3500);
+      else if (t.type === 'edit') this.ui.toast('Messy sketch loaded: fix the items in the task list', 3500);
     }
 
     /* Active task time for the current attempt: wall time minus paused time. */
