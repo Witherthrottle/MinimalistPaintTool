@@ -67,12 +67,32 @@
       this.app.logEvent('menu_close', { menu: t.menu, durationMs: Math.round(performance.now() - t.at), selected: selected || null });
     }
 
+    /* ======================= clutter ======================= */
+    // Look-alike decoy tools, interleaved with the real ones (borrowing a real tool's icon) so the real tool is harder to find.
+    static decoyTools(cid) {
+      return ({
+        draw: [['Soft Pencil', 'pencil'], ['Calligraphy Pen', 'pen'], ['Mixer Brush', 'brush'], ['Spray Can', 'airbrush'], ['Highlighter', 'marker']],
+        edit: [['Background Eraser', 'eraser'], ['Blur', 'smudge'], ['Healing Brush', 'clone']],
+        fill: [['Pattern Fill', 'bucket'], ['Mesh Gradient', 'gradient'], ['Color Sampler', 'eyedropper'], ['Color Mixer', 'colorpicker']],
+        select: [['Magnetic Lasso', 'lasso'], ['Magic Wand', 'rectselect'], ['Nudge', 'move'], ['Perspective Warp', 'transform']],
+        shapes: [['Arrow', 'line'], ['Rounded Rectangle', 'rect'], ['Polygon', 'ellipse']],
+      })[cid] || [];
+    }
+    // Insert decoys after every real item (separators stay put), so real items are scattered among fakes.
+    static interleave(real, decoys) {
+      const out = []; let i = 0;
+      for (const it of real) { out.push(it); if (!it.sep && i < decoys.length) out.push(decoys[i++]); }
+      while (i < decoys.length) out.push(decoys[i++]);
+      return out;
+    }
+
     /* ======================= menubar ======================= */
     menus() {
       const a = this.app;
       const toolItems = MP.CLUSTERS.map((c) => ({
         label: c.name,
-        submenu: c.tools.map((t) => ({ label: MP.TOOLS[t].name, key: MP.TOOLS[t].key.toUpperCase(), icon: MP.TOOLS[t].icon, act: (e) => a.selectTool(t, 'menu', { clientX: e.clientX, clientY: e.clientY, menuPath: 'tools>' + c.id }) })),
+        submenu: UI.interleave(c.tools.map((t) => ({ label: MP.TOOLS[t].name, key: MP.TOOLS[t].key.toUpperCase(), icon: MP.TOOLS[t].icon, act: (e) => a.selectTool(t, 'menu', { clientX: e.clientX, clientY: e.clientY, menuPath: 'tools>' + c.id }) })),
+          UI.decoyTools(c.id).map(([n, like]) => ({ label: n, key: MP.TOOLS[like].key.toUpperCase(), icon: MP.TOOLS[like].icon, act: () => this.clutterClick('tools>' + n) }))),
       }));
       // Clutter: decoy items that look real but do nothing (they only log a click and show a toast).
       const dz = (menu) => (label, key) => ({ label, key, act: () => this.clutterClick(menu + '>' + label) });
@@ -160,10 +180,11 @@
           ...d('help', ['Tutorials', 'What’s new', 'Check for updates…', 'Send feedback…']),
         ] },
       ];
-      for (const m of menus) if (extra[m.id]) m.items.push(...extra[m.id]);
-      const viewIdx = menus.findIndex((m) => m.id === 'view');
-      menus.splice(viewIdx, 0, ...decoyMenus);
-      return menus;
+      for (const m of menus) if (extra[m.id]) m.items = UI.interleave(m.items, extra[m.id].filter((x) => !x.sep));
+      // scatter the decoy menus between the real ones
+      const out = [];
+      menus.forEach((m, i) => { out.push(m); if (decoyMenus[i]) out.push(decoyMenus[i]); });
+      return out;
     }
 
     clutterClick(what) {
@@ -291,6 +312,13 @@
         btn.addEventListener('contextmenu', (e) => { e.preventDefault(); this.openFlyout(c, btn, 'right_click'); });
         tb.append(btn);
         this.clusterBtns[c.id] = { btn, main };
+        // decoy cluster-style buttons using look-alike icons, placed right next to the real one
+        for (const [n, like] of UI.decoyTools(c.id).slice(0, 2)) {
+          const fake = el('div', { class: 'cluster', title: n, role: 'button', tabindex: 0 }, el('span', { class: 'cl-icon' }, U.svgIcon(MP.TOOLS[like].icon, 22)), el('span', { class: 'cl-corner' }));
+          fake.addEventListener('pointerup', () => this.clutterClick('toolbar>' + n));
+          fake.addEventListener('contextmenu', (e) => e.preventDefault());
+          tb.append(fake);
+        }
       }
       tb.append(el('div', { class: 'tb-sep' }));
 
@@ -344,7 +372,14 @@
       const fl = $('#flyout');
       fl.innerHTML = '';
       fl.append(el('div', { class: 'fl-title' }, c.name));
-      for (const t of c.tools) {
+      const decoys = UI.decoyTools(c.id);
+      c.tools.forEach((t, i) => {
+        if (decoys[i]) {
+          const [n, like] = decoys[i];
+          const fake = el('button', { class: 'fl-item' }, U.svgIcon(MP.TOOLS[like].icon, 18), el('span', { class: 'lbl' }, n), el('span', { class: 'key' }, MP.TOOLS[like].key.toUpperCase()));
+          fake.addEventListener('pointerup', (e) => { e.preventDefault(); this.closeFlyout('decoy:' + n); this.clutterClick('flyout>' + n); });
+          fl.append(fake);
+        }
         const meta = MP.TOOLS[t];
         const row = el('button', { class: 'fl-item' + (t === this.app.toolId ? ' active' : '') },
           U.svgIcon(meta.icon, 18), el('span', { class: 'lbl' }, meta.name), el('span', { class: 'key' }, meta.key.toUpperCase()));
@@ -354,6 +389,11 @@
           this.app.selectTool(t, 'flyout', { clientX: e.clientX, clientY: e.clientY, flyoutTrigger: trigger });
         });
         fl.append(row);
+      });
+      for (const [n, like] of decoys.slice(c.tools.length)) {
+        const fake = el('button', { class: 'fl-item' }, U.svgIcon(MP.TOOLS[like].icon, 18), el('span', { class: 'lbl' }, n));
+        fake.addEventListener('pointerup', (e) => { e.preventDefault(); this.closeFlyout('decoy:' + n); this.clutterClick('flyout>' + n); });
+        fl.append(fake);
       }
       const r = btn.getBoundingClientRect();
       fl.style.left = r.right + 6 + 'px';
