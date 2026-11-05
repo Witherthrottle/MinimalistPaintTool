@@ -74,7 +74,24 @@
         label: c.name,
         submenu: c.tools.map((t) => ({ label: MP.TOOLS[t].name, key: MP.TOOLS[t].key.toUpperCase(), icon: MP.TOOLS[t].icon, act: (e) => a.selectTool(t, 'menu', { clientX: e.clientX, clientY: e.clientY, menuPath: 'tools>' + c.id }) })),
       }));
-      return [
+      // Clutter: decoy items that look real but do nothing (they only log a click and show a toast).
+      const dz = (menu) => (label, key) => ({ label, key, act: () => this.clutterClick(menu + '>' + label) });
+      const decoySub = (menu, label, labels) => ({ label, submenu: labels.map((l) => dz(menu)(l)) });
+      const d = (menu, labels) => labels.map((l) => (l === '-' ? { sep: 1 } : Array.isArray(l) ? dz(menu)(l[0], l[1]) : dz(menu)(l)));
+      const extra = {
+        file: [{ sep: 1 }, ...d('file', [['Save', 'Ctrl+S'], ['Save as…', 'Ctrl+Shift+S'], 'Revert', ['Print…', 'Ctrl+P']]), decoySub('file', 'Recent files', ['sketch_01.mp', 'portrait_final.mp', 'untitled-3.mp']), decoySub('file', 'Import', ['From scanner…', 'From clipboard', 'From URL…']), ...d('file', ['Document properties…', 'Share…'])],
+        edit: [{ sep: 1 }, ...d('edit', [['Cut', 'Ctrl+X'], ['Copy', 'Ctrl+C'], ['Copy merged', 'Ctrl+Shift+C'], ['Paste', 'Ctrl+V'], 'Paste in place', '-', 'Stroke selection…', 'Content-aware fill…', '-', ['Preferences…', 'Ctrl+K']]), decoySub('edit', 'Presets', ['Brush presets…', 'Swatch presets…', 'Export presets…'])],
+        layer: [{ sep: 1 }, ...d('layer', ['Layer properties…', 'Layer style…', 'New adjustment layer', 'Rasterize', 'Flatten image', 'Group layers', 'Lock layer']), decoySub('layer', 'Blend mode', ['Normal', 'Multiply', 'Screen', 'Overlay', 'Soft light', 'Difference'])],
+        select: [{ sep: 1 }, ...d('select', [['Inverse', 'Ctrl+Shift+I'], 'Reselect', 'Color range…', 'Grow', 'Similar']), decoySub('select', 'Modify', ['Border…', 'Smooth…', 'Expand…', 'Contract…', 'Feather…'])],
+        view: [{ sep: 1 }, ...d('view', ['Show rulers', 'Show grid', 'Show guides', 'Snap', 'Pixel preview', 'Proof colors', 'Full screen mode', 'Rotate view'])],
+      };
+      const decoyMenus = [
+        { id: 'image', label: 'Image', items: [...d('image', ['Image size…', 'Canvas size…', 'Crop', 'Trim…', '-']), decoySub('image', 'Rotate', ['90° clockwise', '90° counter-clockwise', '180°', 'Arbitrary…']), decoySub('image', 'Mode', ['RGB', 'CMYK', 'Grayscale', 'Indexed']), ...d('image', ['Duplicate image', 'Flip horizontal', 'Flip vertical'])] },
+        { id: 'adjust', label: 'Adjust', items: d('adjust', [['Levels…', 'Ctrl+L'], ['Curves…', 'Ctrl+M'], 'Brightness / Contrast…', ['Hue / Saturation…', 'Ctrl+U'], 'Color balance…', 'Vibrance…', '-', ['Invert', 'Ctrl+I'], 'Desaturate', 'Posterize…', 'Threshold…', 'Auto tone']) },
+        { id: 'filter', label: 'Filter', items: [decoySub('filter', 'Blur', ['Gaussian blur…', 'Motion blur…', 'Radial blur…', 'Lens blur…']), decoySub('filter', 'Sharpen', ['Sharpen', 'Unsharp mask…', 'Smart sharpen…']), decoySub('filter', 'Distort', ['Ripple…', 'Twirl…', 'Wave…', 'Pinch…']), decoySub('filter', 'Noise', ['Add noise…', 'Reduce noise…', 'Median…']), decoySub('filter', 'Stylize', ['Emboss…', 'Find edges', 'Oil paint…', 'Pixelate…']), { sep: 1 }, ...d('filter', ['Filter gallery…', 'Liquify…', 'Last filter'])] },
+        { id: 'window', label: 'Window', items: d('window', ['Arrange', 'Workspace', '-', 'Brushes', 'Swatches', 'Navigator', 'Histogram', 'Channels', 'Paths', 'Actions', 'Info', 'Properties', '-', 'Reset workspace']) },
+      ];
+      const menus = [
         { id: 'file', label: 'File', items: [
           { label: 'New canvas…', act: () => a.dialogNewCanvas() },
           { label: 'Open image as layer…', act: () => a.openImage() },
@@ -139,8 +156,19 @@
         { id: 'help', label: 'Help', items: [
           { label: 'Keyboard shortcuts', key: '?', act: () => this.showShortcuts() },
           { label: 'About', act: () => this.showAbout() },
+          { sep: 1 },
+          ...d('help', ['Tutorials', 'What’s new', 'Check for updates…', 'Send feedback…']),
         ] },
       ];
+      for (const m of menus) if (extra[m.id]) m.items.push(...extra[m.id]);
+      const viewIdx = menus.findIndex((m) => m.id === 'view');
+      menus.splice(viewIdx, 0, ...decoyMenus);
+      return menus;
+    }
+
+    clutterClick(what) {
+      this.app.logEvent('clutter_click', { item: what });
+      this.toast(what.split('>').pop().replace('…', '') + ' is not available in this version');
     }
 
     buildMenubar() {
@@ -284,6 +312,16 @@
         mk('M11 4a7 7 0 100 14 7 7 0 000-14z M21 21l-5-5 M8 11h6', 'Zoom out (−)', () => this.app.zoomStep(0.8, 'button')),
         mk('M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5', 'Fit to window (0)', () => this.app.zoomFit('button')),
       );
+      // Clutter: decoy toolbar buttons (non-functional)
+      tb.append(el('div', { class: 'tb-sep' }));
+      const decoys = [
+        ['M12 3v18 M3 12h18 M7 7h.01 M17 17h.01', 'Ruler'], ['M3 9h18 M3 15h18 M9 3v18 M15 3v18', 'Grid'],
+        ['M4 4l16 16 M20 4L4 20', 'Slice'], ['M6 4h12l-6 16z', 'Sharpen'], ['M12 4a8 8 0 100 16 8 8 0 000-16z M12 4v16', 'Dodge / Burn'],
+        ['M5 19h14 M7 15l5-10 5 10 M9 11h6', 'Text'], ['M4 12c4-8 12-8 16 0-4 8-12 8-16 0z M12 10a2 2 0 100 4 2 2 0 000-4z', 'Hand'],
+        ['M3 6h18 M6 12h12 M9 18h6', 'Filters'], ['M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z', 'Favorites'],
+        ['M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z', 'Patterns'], ['M12 8v4l3 3 M12 3a9 9 0 100 18 9 9 0 000-18z', 'Animation timeline'],
+      ];
+      for (const [icon, name] of decoys) tb.append(mk(icon, name, () => this.clutterClick('toolbar>' + name)));
       this.refreshToolbar();
     }
 
